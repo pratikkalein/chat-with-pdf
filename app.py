@@ -174,7 +174,7 @@ def main():
 
 
    
-
+    st.image("img/ChatBG.png")
     st.write(
     f"""
     <div style="display: flex; align-items: center; margin-left: 0;">
