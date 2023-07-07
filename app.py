@@ -225,7 +225,7 @@ def main():
     os.environ["OPENAI_API_KEY"] = st.session_state.openai_api_key
 
     uploaded_files = st.file_uploader("Upload a PDF or TXT Document", type=["pdf", "txt"], accept_multiple_files=True)
-    pdf_image = st.checkbox ("Is this a scanned of image based PDF?", value=False)
+    pdf_image = st.checkbox ("Check this box if the PDF is image based/scanned", value=False)
 
     if uploaded_files:
         # Check if last_uploaded_files is not in session_state or if uploaded_files are different from last_uploaded_files
