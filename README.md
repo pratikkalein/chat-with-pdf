@@ -1,7 +1,7 @@
 # Chat With PDF
 
 ```bash
-gcloud builds submit --tag gcr.io/<ProjectName>/<AppName>  --project=<ProjectName>
+gcloud builds submit --tag gcr.io/danalitic-gdg-cloud-cogniwonk/chat-with-pdf  --project=danalitic-gdg-cloud-cogniwonk
 ```
 
 ```bash

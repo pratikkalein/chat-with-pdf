@@ -8,29 +8,61 @@ from dotenv import load_dotenv
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
-from langchain.retrievers import SVMRetriever
 from langchain.chains import QAGenerationChain
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.base import CallbackManager
-from langchain.embeddings import HuggingFaceEmbeddings
+from pdf2image import convert_from_path
+from pytesseract import image_to_string
+from tempfile import NamedTemporaryFile
 
 
 st.set_page_config(page_title="Chat With PDF | Demo",page_icon=':file_cabinet:')
 
 @st.cache_data
-def load_docs(files):
+def load_docs(files, pdf_image):
     # st.info("`Processing ...`")
     all_text = ""
     for file_path in files:
         file_extension = os.path.splitext(file_path.name)[1]
         if file_extension == ".pdf":
-            pdf_reader = PyPDF2.PdfReader(file_path)
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-            all_text += text
+            with NamedTemporaryFile(dir='.', suffix='.pdf') as f:
+                print(f.write(file_path.getbuffer()))
+    
+            if pdf_image == False:
+                pdf_reader = PyPDF2.PdfReader(file_path)
+                print(file_path)
+                text = ""
+                for page in pdf_reader.pages:
+                    text += page.extract_text()
+                all_text += text
+              
+
+            else:
+                print("Processing OCR ....>>>")
+
+                def convert_pdf_to_img(pdf_file):
+                    return convert_from_path(pdf_file)
+                
+                def convert_image_to_text(file):
+                    text = image_to_string(file)
+                    return text
+                
+                def get_text_from_any_pdf(pdf_file):
+                    images = convert_pdf_to_img (pdf_file)
+                    final_text = ""
+                    for pg, img in enumerate (images):
+
+                        final_text += convert_image_to_text(img)
+
+                    return final_text
+                    
+                with NamedTemporaryFile(dir='.', suffix='.pdf') as f:
+                    f.write(file_path.getbuffer())    
+                    print(get_text_from_any_pdf(f.name))
+                    all_text = get_text_from_any_pdf(f.name)
+
         elif file_extension == ".txt":
             stringio = StringIO(file_path.getvalue().decode("utf-8"))
             text = stringio.read()
@@ -41,20 +73,16 @@ def load_docs(files):
 
 
 
-
 @st.cache_resource
 def create_retriever(_embeddings, splits, retriever_type):
-    if retriever_type == "SIMILARITY SEARCH":
         try:
             vectorstore = FAISS.from_texts(splits, _embeddings)
         except (IndexError, ValueError) as e:
             st.error(f"Error creating vectorstore: {e}")
             return
         retriever = vectorstore.as_retriever(k=5)
-    elif retriever_type == "SUPPORT VECTOR MACHINES":
-        retriever = SVMRetriever.from_texts(splits, _embeddings)
 
-    return retriever
+        return retriever
 
 @st.cache_resource
 def split_texts(text, chunk_size, overlap, split_method):
@@ -63,7 +91,6 @@ def split_texts(text, chunk_size, overlap, split_method):
     # IN: text, chunk size, overlap, split_method
     # OUT: list of str splits
 
-    # st.info("`Splitting doc ...`")
 
     split_method = "RecursiveTextSplitter"
     text_splitter = RecursiveCharacterTextSplitter(
@@ -185,41 +212,20 @@ def main():
         )
 
 
-    
-    embedding_option = "OpenAI Embeddings"
-    # embedding_option = st.sidebar.radio(
-    #     "Choose Embeddings", ["OpenAI Embeddings", "HuggingFace Embeddings(slower)"])
 
     retriever_type = "SIMILARITY SEARCH"
 
-    # retriever_type = st.sidebar.selectbox(
-    #     "Choose Retriever", ["SIMILARITY SEARCH", "SUPPORT VECTOR MACHINES"])
-
-    # Use RecursiveCharacterTextSplitter as the default and only text splitter
-    splitter_type = "RecursiveCharacterTextSplitter"
     load_dotenv()
 
     # openai_api_key = os.getenv("OPENAI_API_KEY")
     st.session_state.openai_api_key = os.getenv("OPENAI_API_KEY") 
 
 
-    if 'openai_api_key' not in st.session_state:
-        openai_api_key = st.text_input(
-            'Please enter your OpenAI API key or [get one here](https://platform.openai.com/account/api-keys)', value="", placeholder="Enter the OpenAI API key which begins with sk-")
-        if openai_api_key:
-            st.session_state.openai_api_key = openai_api_key
-            os.environ["OPENAI_API_KEY"] = openai_api_key
-        else:
-            #warning_text = 'Please enter your OpenAI API key. Get yours from here: [link](https://platform.openai.com/account/api-keys)'
-            #warning_html = f'<span>{warning_text}</span>'
-            #st.markdown(warning_html, unsafe_allow_html=True)
-            return
-    else:
     
-         os.environ["OPENAI_API_KEY"] = st.session_state.openai_api_key
+    os.environ["OPENAI_API_KEY"] = st.session_state.openai_api_key
 
-    uploaded_files = st.file_uploader("Upload a PDF or TXT Document", type=[
-                                      "pdf", "txt"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload a PDF or TXT Document", type=["pdf", "txt"], accept_multiple_files=True)
+    pdf_image = st.checkbox ("Is this a scanned of image based PDF?", value=False)
 
     if uploaded_files:
         # Check if last_uploaded_files is not in session_state or if uploaded_files are different from last_uploaded_files
@@ -229,25 +235,16 @@ def main():
                 del st.session_state['eval_set']
 
         # Load and process the uploaded PDF or TXT files.
-        loaded_text = load_docs(uploaded_files)
+        loaded_text = load_docs(uploaded_files, pdf_image)
         st.write("Document uploaded and processed.")
 
         # Split the document into chunks
         splits = split_texts(loaded_text, chunk_size=1000,
-                             overlap=0, split_method=splitter_type)
+                             overlap=0, split_method="RecursiveCharacterTextSplitter")
 
-        # Display the number of text chunks
-        num_chunks = len(splits)
-        # st.write(f"Number of text chunks: {num_chunks}")
 
         # Embed using OpenAI embeddings
-            # Embed using OpenAI embeddings or HuggingFace embeddings
-        if embedding_option == "OpenAI Embeddings":
-            embeddings = OpenAIEmbeddings()
-        elif embedding_option == "HuggingFace Embeddings(slower)":
-            # Replace "bert-base-uncased" with the desired HuggingFace model
-            embeddings = HuggingFaceEmbeddings()
-
+        embeddings = OpenAIEmbeddings()
         retriever = create_retriever(embeddings, splits, retriever_type)
 
 
@@ -262,7 +259,7 @@ def main():
         # Check if there are no generated question-answer pairs in the session state
         if 'eval_set' not in st.session_state:
             # Use the generate_eval function to generate question-answer pairs
-            num_eval_questions = 10  # Number of question-answer pairs to generate
+            num_eval_questions = 5  # Number of question-answer pairs to generate
             st.session_state.eval_set = generate_eval(
                 loaded_text, num_eval_questions, 3000)
 
@@ -281,14 +278,27 @@ def main():
             # <h4 style="font-size: 14px;">Question {i + 1}:</h4>
             # <h4 style="font-size: 14px;">Answer {i + 1}:</h4>
         st.write("Ready to answer questions.")
-
+        
+        
         # Question and answering
-        user_question = st.text_area("Enter Your Question:")
-        st.button("Submit")
+        with st.form("my_form",clear_on_submit=True):
+            user_question = st.text_area("Enter Your Question:")     
+            submitted = st.form_submit_button("Submit")
+        
+        button_clicked = st.button("Clear")
+        
+        if button_clicked:
+            submitted = False    
         if user_question:
             answer = qa.run(user_question)
-            st.subheader("Answer:")
-            st.write(answer)
+            if submitted:
+                st.subheader("Question")
+                st.write(user_question)
+                st.subheader("Answer:")
+                st.write(answer)
+
+        
+        
 
 
 
