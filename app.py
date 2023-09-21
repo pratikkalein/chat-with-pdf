@@ -19,7 +19,7 @@ from tempfile import NamedTemporaryFile
 import sqlite3 as sl
 
 
-st.set_page_config(page_title="Benefit Advocacy Bot - Powered By GenAI",page_icon=':robot_face:')
+st.set_page_config(page_title="Chat With PDF",page_icon=':robot_face:')
 
 @st.cache_data
 def load_docs(files, pdf_image):
@@ -201,21 +201,21 @@ def main():
         """,
         unsafe_allow_html=True,
     )
-    st.sidebar.image("img/left2.png")
+    st.sidebar.image("img/left.png")
     show_auto_questions = st.sidebar.checkbox('Auto-generated Questions')
     show_history = st.sidebar.checkbox('Previously Searched Questions (History)')
 
 
    
     st.image("img/center.png")
-    st.write(
-    f"""
-    <div style="display: flex; align-items: center; margin-left: 0;">
-        <h2 style="display: inline-block;">Benefit Advocacy Bot - Powered By GenAI</h2>
-    </div>
-    """,
-    unsafe_allow_html=True,
-        )
+    # st.write(
+    # f"""
+    # <div style="display: flex; align-items: center; margin-left: 0;">
+    #     <h2 style="display: inline-block;">Chat With PDF</h2>
+    # </div>
+    # """,
+    # unsafe_allow_html=True,
+    #     )
 
 
 
