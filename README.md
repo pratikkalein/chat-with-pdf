@@ -1,7 +1,7 @@
 # Chat With PDF
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pratikkalein/chat-with-pdf/main/center.png" />
+  <img src="https://raw.githubusercontent.com/pratikkalein/chat-with-pdf/main/img/center.png" />
 </p>
 
 Simple application using Python and Streamlit using OpenAI API. Upload any pdf file and ask questions about it! It also supports images scans.
